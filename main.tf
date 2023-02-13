@@ -194,21 +194,21 @@ resource "aws_default_route_table" "default" {
 ################################################################################
 
 resource "aws_route_table" "public" {
-  count = local.create_vpc && length(var.public_subnets) > 0 ? 1 : 0
+  count = local.create_vpc && length(var.public_subnets) > 0 ? length(var.public_subnets) : 0
 
   vpc_id = local.vpc_id
 
   tags = merge(
-    { "Name" = "${var.name}-${var.public_subnet_suffix}" },
+    { "Name" = "${var.name}-${var.public_subnet_suffix}-${var.azs[count.index]}" },
     var.tags,
     var.public_route_table_tags,
   )
 }
 
 resource "aws_route" "public_internet_gateway" {
-  count = local.create_vpc && var.create_igw && length(var.public_subnets) > 0 ? 1 : 0
+  count = local.create_vpc && var.create_igw && length(var.public_subnets) > 0 ? length(var.public_subnets): 0
 
-  route_table_id         = aws_route_table.public[0].id
+  route_table_id         = aws_route_table.public[count.index].id
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this[0].id
 
@@ -218,7 +218,7 @@ resource "aws_route" "public_internet_gateway" {
 }
 
 resource "aws_route" "public_internet_gateway_ipv6" {
-  count = local.create_vpc && var.create_igw && var.enable_ipv6 && length(var.public_subnets) > 0 ? 1 : 0
+  count = local.create_vpc && var.create_igw && var.enable_ipv6 && length(var.public_subnets) > 0 ? length(var.public_subnets) : 0
 
   route_table_id              = aws_route_table.public[0].id
   destination_ipv6_cidr_block = "::/0"
@@ -341,12 +341,12 @@ resource "aws_route_table" "elasticache" {
 ################################################################################
 
 resource "aws_route_table" "intra" {
-  count = local.create_vpc && length(var.intra_subnets) > 0 ? 1 : 0
+  count = local.create_vpc && length(var.intra_subnets) > 0 ? length(var.intra_subnets) : 0
 
   vpc_id = local.vpc_id
 
   tags = merge(
-    { "Name" = "${var.name}-${var.intra_subnet_suffix}" },
+    { "Name" = "${var.name}-${var.intra_subnet_suffix}-${var.azs[count.index]}" },
     var.tags,
     var.intra_route_table_tags,
   )
@@ -1141,14 +1141,14 @@ resource "aws_route_table_association" "intra" {
   count = local.create_vpc && length(var.intra_subnets) > 0 ? length(var.intra_subnets) : 0
 
   subnet_id      = element(aws_subnet.intra[*].id, count.index)
-  route_table_id = element(aws_route_table.intra[*].id, 0)
+  route_table_id = element(aws_route_table.intra[*].id, count.index)
 }
 
 resource "aws_route_table_association" "public" {
   count = local.create_vpc && length(var.public_subnets) > 0 ? length(var.public_subnets) : 0
 
   subnet_id      = element(aws_subnet.public[*].id, count.index)
-  route_table_id = aws_route_table.public[0].id
+  route_table_id = element(aws_route_table.public[*].id, count.index)
 }
 
 ################################################################################
